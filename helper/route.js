@@ -10,20 +10,37 @@ const tplPath = path.join(__dirname, '../templates/dir.tpl');
 const source = fs.readFileSync(tplPath); //不写utf8 ，返回的是buffer
 const template = Handlebars.compile(source.toString());
 const mime = require('./mime');
+const range = require('./range.js')
+
+
+const compress = require('./compress');
 
 module.exports = async function (req, res, filePath) {
     try {
         const stats = await stat(filePath);
         // console.log(chalk.red(stats.isFile()), chalk.blue(stats.isDirectory()));
         if (stats.isFile()) {
-            const contentType =mime(filePath);
+            const contentType = mime(filePath);
             res.statusCode = 200;
             res.setHeader('Content-Type', contentType);
             //fs.readFile(filePath,(err,data)=>{
             //     res.end(data);//全读了再放
             // });
-            fs.createReadStream(filePath).pipe(res);//读一点放一点
-
+            //fs.createReadStream(filePath).pipe(res);//读一点放一点
+            let rs;
+            const { code, start, end } = range(stats.size, req, res);
+            if (code === 200) {
+                res.statusCode = 200;
+                rs = fs.createReadStream(filePath);
+            } else {
+                res.statusCode = 206;
+                rs = fs.createReadStream(filePath, { start, end });
+            }
+            // let rs = fs.createReadStream(filePath);
+            if (filePath.match(config.compress)) { //进行文件压缩
+                rs = compress(rs, req, res);
+            }
+            return rs.pipe(res);
 
         } else if (stats.isDirectory()) {
             const files = await readdir(filePath);
