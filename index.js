@@ -1,23 +1,29 @@
-const http = require('http');
-const chalk = require('chalk');
-const config = require('./config/defaultConfig');
-const route = require('./helper/route.js');
-const path = require('path');
-const fs = require('fs');
+const yargs = require('yargs');
+const Server = require('./app');
 
 
+const argv = yargs
+    .usage('anywhere [options]')
+    .option('p', {
+        alias: 'port',
+        describe: '端口号',
+        default: 8080
+    })
+    .option('h', {
+        alias: 'hostname',
+        describe: 'host',
+        default: '127.0.0.1'
+    })
+    .option('d', {
+        alias: 'root',
+        describe: 'root path',
+        default: process.cwd()
+    })
+    .version()
+    .alias('v', 'version')
+    .help()
+    .argv;
 
-const server = http.createServer((req, res) => {
-    const filePath = path.join(config.root, req.url);
-    route(req, res, filePath);
-    // res.statusCode = 200;
-    // res.setHeader('Content-Type', 'text/html');
-    // res.end(filePath);
-});
 
-
-
-server.listen(config.port, config.hostname, () => {
-    const addr = `http://${config.hostname}:${config.port}`
-    console.info(`Server started at ${chalk.green(addr)}`);
-})
+const server = new Server(argv);
+server.start();
